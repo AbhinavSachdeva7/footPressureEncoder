@@ -9,20 +9,23 @@ import os
 
 # Local imports
 from model import VariationalAutoEncoder
+from newModel import LargeVariationalAutoEncoder
+from convEncoder import ConvolutionVariationalAutoEncoder
 from data_utils import load_and_split_data
 
 # --- Configuration Constants ---
 DATA_PATH = '/scratch/avs7793/footPressureEncoder/footPressureEncoder/data/all_subjects_pressure.pt'
 TRAIN_RATIO = 0.8
 INPUT_DIM = 2520
-H_DIM = 512
-Z_DIM = 32
-NUM_EPOCHS = 201 # Example: Run for 201 epochs
+LH_DIM = 3072
+H_DIM = 1024 # 1024 for LargeVAE
+Z_DIM = 64
+NUM_EPOCHS = 200 # Example: Run for 201 epochs
 BATCH_SIZE = 64
 LEARNING_RATE = 1e-4
 FORCE_CPU = False # Set to True to force CPU usage
 CHECKPOINT_LOAD_PATH = None
-CHECKPOINT_DIR = '/scratch/avs7793/footPressureEncoder/checkpoints/'
+CHECKPOINT_DIR = '/scratch/avs7793/footPressureEncoder/checkpoints/convVAE_ngc'
 CHECKPOINT_SAVE_FREQ = 100 # Save every 100 epochs
 SEED = 781
 # --- End Configuration ---
@@ -35,8 +38,11 @@ def train_epoch(model, loader, optimizer, loss_fn, device, input_dim, epoch, num
 
     for (i, x_original) in loop:
         # Move to device and reshape
-        x_original = x_original.to(device).view(x_original.shape[0], input_dim)
-
+        # x_original = x_original.to(device).view(x_original.shape[0], input_dim)
+        
+        # for conv VAE, adding channels
+        x_original = x_original.to(device).unsqueeze(1)
+        
         # Apply log1p preprocessing
         x_processed = torch.log1p(x_original)
 
@@ -54,7 +60,7 @@ def train_epoch(model, loader, optimizer, loss_fn, device, input_dim, epoch, num
         optimizer.zero_grad()
         loss.backward()
         # Optional: Gradient clipping (uncomment if needed)
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
 
         total_loss += loss.item()
@@ -93,13 +99,34 @@ if __name__ == "__main__":
         seed = SEED
     )
 
+    # vae = VariationalAutoEncoder(
+    #     input_dim=2520,
+    #     h_dim=512,
+    #     z_dim=32
+    # )
 
-    # Initialize model
-    model = VariationalAutoEncoder(
-        input_dim=INPUT_DIM,
-        h_dim=H_DIM,
-        z_dim=Z_DIM
-    ).to(device)
+    # vae1 = VariationalAutoEncoder(
+    #     input_dim=2520,
+    #     h_dim=512,
+    #     z_dim=64
+    # )
+
+    # largeVAE = LargeVariationalAutoEncoder(
+    #     input_dim = 2520,
+    #     l_dim=3072,
+    #     h_dim=1024,
+    #     z_dim=64
+    # )
+
+    convVAE = ConvolutionVariationalAutoEncoder(
+        z_dim = 64
+    )
+
+    # model = vae.to(device)
+    # model = vae1.to(device)
+    # model = largeVAE.to(device)
+    model = convVAE.to(device)
+
 
     # Load checkpoint if specified
     if CHECKPOINT_LOAD_PATH:

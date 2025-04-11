@@ -8,11 +8,13 @@ from torch.utils.data import DataLoader # Keep DataLoader
 
 # Local imports
 from model import VariationalAutoEncoder
+from newModel import LargeVariationalAutoEncoder
+from convEncoder import ConvolutionVariationalAutoEncoder
 from data_utils import load_and_split_data # Import data loading utility
 
 # --- Configuration Constants ---
 DATA_PATH = '/scratch/avs7793/footPressureEncoder/footPressureEncoder/data/all_subjects_pressure.pt'
-CHECKPOINT_PATH = '/scratch/avs7793/footPressureEncoder/checkpoints/model_epoch_201.pt' # Specify the exact checkpoint
+CHECKPOINT_PATH = '/scratch/avs7793/footPressureEncoder/checkpoints/lg_z64_ngc/model_epoch_200.pt' # Specify the exact checkpoint
 
 # Data handling constants (should match train.py for consistency)
 TRAIN_RATIO = 0.8
@@ -21,13 +23,13 @@ BATCH_SIZE = 64 # Batch size for loading test data (can be different from traini
 
 # Model constants (must match the loaded checkpoint)
 H_DIM = 512
-Z_DIM = 32
+Z_DIM = 64
 INPUT_DIM = 2520
 
 # Inference constants
 SINGLE_SAMPLE_IDX = 35700 # Index for the single specific sample reconstruction
 NUM_TEST_SAMPLES_TO_VISUALIZE = 20 # Number of test samples to plot
-OUTPUT_DIR = '/scratch/avs7793/footPressureEncoder/examples/'
+OUTPUT_DIR = '/scratch/avs7793/footPressureEncoder/examples/examples_lg_z64_ngc'
 FORCE_CPU = True # Set to False to try using GPU if available
 IMAGE_SHAPE = (60, 42) # Define image shape for reshaping
 # --- End Configuration ---
@@ -74,7 +76,10 @@ def evaluate_and_visualize_test_samples(model, test_loader, device, output_dir, 
                 break
 
             # Move to device and reshape
-            x_original_batch = x_original_batch.to(device).view(x_original_batch.shape[0], input_dim)
+            # x_original_batch = x_original_batch.to(device).view(x_original_batch.shape[0], input_dim)
+
+            # for convolutional vae
+            x_original_batch = x_original_batch.to(device).unsqueeze(1)
 
             # Apply log1p preprocessing (as done in training)
             x_processed = torch.log1p(x_original_batch)
@@ -132,11 +137,29 @@ if __name__ == "__main__":
         exit()
 
     # --- Initialize Model ---
-    model = VariationalAutoEncoder(
-        input_dim=INPUT_DIM, # Use inferred input_dim
-        h_dim=H_DIM,
-        z_dim=Z_DIM
+    # model = VariationalAutoEncoder(
+    #     input_dim=2520, # Use inferred input_dim
+    #     h_dim=512,
+    #     z_dim=32
+    # ).to(device)
+
+
+    # model = VariationalAutoEncoder(
+    #     input_dim=2520, # Use inferred input_dim
+    #     h_dim=512,
+    #     z_dim=64
+    # ).to(device)
+
+    model = LargeVariationalAutoEncoder(
+        input_dim=2520,
+        l_dim = 3072,
+        h_dim = 1024,
+        z_dim = 64
     ).to(device)
+
+    # model = ConvolutionVariationalAutoEncoder(
+    #     z_dim = 64
+    # ).to(device)
 
     # --- Load Checkpoint ---
     if not CHECKPOINT_PATH or not os.path.exists(CHECKPOINT_PATH):
@@ -154,82 +177,86 @@ if __name__ == "__main__":
         exit()
 
     # --- Evaluate and Visualize Test Samples ---
-    evaluate_and_visualize_test_samples(
-        model=model,
-        test_loader=test_loader,
-        device=device,
-        output_dir=OUTPUT_DIR,
-        input_dim=INPUT_DIM,
-        num_samples=NUM_TEST_SAMPLES_TO_VISUALIZE
-    )
+    # evaluate_and_visualize_test_samples(
+    #     model=model,
+    #     test_loader=test_loader,
+    #     device=device,
+    #     output_dir=OUTPUT_DIR,
+    #     input_dim=INPUT_DIM,
+    #     num_samples=NUM_TEST_SAMPLES_TO_VISUALIZE
+    # )
 
-    # --- Original Single Sample Inference (Optional) ---
-    # Load the full dataset again just to get the specific single sample
-    # This is inefficient but keeps the logic separate for demonstration
-    print(f"\nLoading full dataset again for single sample index {SINGLE_SAMPLE_IDX}...")
-    try:
-        full_dataset = torch.load(DATA_PATH).float()
-        if SINGLE_SAMPLE_IDX >= len(full_dataset):
-             print(f"Error: Single sample index {SINGLE_SAMPLE_IDX} is out of bounds (Dataset size: {len(full_dataset)}). Using index 0.")
-             single_sample_idx_to_use = 0
-        else:
-             single_sample_idx_to_use = SINGLE_SAMPLE_IDX
+    # # --- Original Single Sample Inference (Optional) ---
+    # # Load the full dataset again just to get the specific single sample
+    # # This is inefficient but keeps the logic separate for demonstration
+    # print(f"\nLoading full dataset again for single sample index {SINGLE_SAMPLE_IDX}...")
+    # try:
+    #     full_dataset = torch.load(DATA_PATH).float()
+    #     if SINGLE_SAMPLE_IDX >= len(full_dataset):
+    #          print(f"Error: Single sample index {SINGLE_SAMPLE_IDX} is out of bounds (Dataset size: {len(full_dataset)}). Using index 0.")
+    #          single_sample_idx_to_use = 0
+    #     else:
+    #          single_sample_idx_to_use = SINGLE_SAMPLE_IDX
 
-        original_x_single = full_dataset[single_sample_idx_to_use].to(device)
-        original_x_single_batch = original_x_single.unsqueeze(0) # Add batch dimension
-        original_x_single_batch = original_x_single_batch.view(1, INPUT_DIM) # Ensure flattened
+    #     original_x_single = full_dataset[single_sample_idx_to_use].to(device)
+    #     original_x_single_batch = original_x_single.unsqueeze(0) # Add batch dimension
+    #     original_x_single_batch = original_x_single_batch.view(1, INPUT_DIM) # Ensure flattened
 
-        # Perform inference for the single sample
-        print(f"Running inference for single sample index: {single_sample_idx_to_use}")
-        with torch.no_grad():
-            # Apply log1p preprocessing
-            x_processed_single = torch.log1p(original_x_single_batch)
-            reconstructed_x_processed_single, _, _ = model(x_processed_single)
-            # Apply expm1 transformation
-            reconstructed_x_single = torch.expm1(reconstructed_x_processed_single)
+    #     # Perform inference for the single sample
+    #     print(f"Running inference for single sample index: {single_sample_idx_to_use}")
+    #     with torch.no_grad():
+    #         # Apply log1p preprocessing
+    #         x_processed_single = torch.log1p(original_x_single_batch)
+    #         reconstructed_x_processed_single, _, _ = model(x_processed_single)
+    #         # Apply expm1 transformation
+    #         reconstructed_x_single = torch.expm1(reconstructed_x_processed_single)
 
-        # Plotting the single sample
-        plot_filename_single = f"single_reconstruction_sample_{single_sample_idx_to_use}.png"
-        output_path_single = os.path.join(OUTPUT_DIR, plot_filename_single)
-        # Calculate MSE for the single sample
-        mse_fn_single = nn.MSELoss(reduction='mean')
-        mse_single = mse_fn_single(reconstructed_x_single.squeeze(0), original_x_single_batch.squeeze(0)).item()
-        print(f"Single Sample {single_sample_idx_to_use} MSE: {mse_single:.4f}")
+    #     # Plotting the single sample
+    #     plot_filename_single = f"single_reconstruction_sample_{single_sample_idx_to_use}.png"
+    #     output_path_single = os.path.join(OUTPUT_DIR, plot_filename_single)
+    #     # Calculate MSE for the single sample
+    #     mse_fn_single = nn.MSELoss(reduction='mean')
+    #     mse_single = mse_fn_single(reconstructed_x_single.squeeze(0), original_x_single_batch.squeeze(0)).item()
+    #     print(f"Single Sample {single_sample_idx_to_use} MSE: {mse_single:.4f}")
 
-        plot_reconstruction(
-            original=original_x_single,
-            reconstructed=reconstructed_x_single.squeeze(0),
-            sample_idx_str=f"Single {single_sample_idx_to_use}",
-            save_path=output_path_single,
-            mse=mse_single
-            )
-    except FileNotFoundError:
-        print(f"Error: Data file not found at {DATA_PATH} when trying to load for single sample.")
-    except Exception as e:
-        print(f"Error during single sample processing: {e}")
+    #     plot_reconstruction(
+    #         original=original_x_single,
+    #         reconstructed=reconstructed_x_single.squeeze(0),
+    #         sample_idx_str=f"Single {single_sample_idx_to_use}",
+    #         save_path=output_path_single,
+    #         mse=mse_single
+    #         )
+    # except FileNotFoundError:
+    #     print(f"Error: Data file not found at {DATA_PATH} when trying to load for single sample.")
+    # except Exception as e:
+    #     print(f"Error during single sample processing: {e}")
 
 # --- Optional: Generate samples from random Z --- (kept original commented code structure)
-# try:
-#     with torch.no_grad():
-#         num_generated_samples = 4
-#         random_z = torch.randn(num_generated_samples, Z_DIM).to(device)
-#         generated_x_flat = model.decode(random_z)
-#     generated_images = generated_x_flat.view(num_generated_samples, *IMAGE_SHAPE).cpu().numpy()
-#     plt.figure(figsize=(num_generated_samples * 3, 4))
-#     for i in range(num_generated_samples):
-#         plt.subplot(1, num_generated_samples, i + 1)
-#         plt.imshow(generated_images[i], cmap='viridis')
-#         plt.title(f"Generated Sample {i+1}")
-#         plt.axis('off')
-#     plt.suptitle("VAE Generated Samples from Random Latent Vectors (z)")
-#     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-#     gen_save_path = os.path.join(OUTPUT_DIR, "generated_samples.png")
-#     os.makedirs(os.path.dirname(gen_save_path), exist_ok=True)
-#     plt.savefig(gen_save_path)
-#     print(f"Generated samples plot saved to: {gen_save_path}")
-#     # plt.show()
-#     plt.close()
-# except Exception as e:
-#     print(f"Error during generation visualization: {e}")
+try:
+    with torch.no_grad():
+        num_generated_samples = 8
+        torch.manual_seed(781)
+        random_z = torch.randn(num_generated_samples, 64).to(device)
+        generated_x_flat = model.decode(random_z)
+        generated_x_flat = torch.expm1(generated_x_flat)
+    generated_images = generated_x_flat.view(num_generated_samples, *IMAGE_SHAPE).cpu().numpy()
+    # generated_images = generated_x_flat.squeeze(1).cpu()
+    # print(generated_images.shape)
+    plt.figure(figsize=(num_generated_samples * 3, 4))
+    for i in range(num_generated_samples):
+        plt.subplot(1, num_generated_samples, i + 1)
+        plt.imshow(generated_images[i], cmap='viridis')
+        plt.title(f"Generated Sample {i+1}")
+        plt.axis('off')
+    plt.suptitle("VAE Generated Samples from Random Latent Vectors (z)")
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    gen_save_path = os.path.join(OUTPUT_DIR, "generated_samples.png")
+    os.makedirs(os.path.dirname(gen_save_path), exist_ok=True)
+    plt.savefig(gen_save_path)
+    print(f"Generated samples plot saved to: {gen_save_path}")
+    # plt.show()
+    plt.close()
+except Exception as e:
+    print(f"Error during generation visualization: {e}")
 
 print("\nInference complete.")
