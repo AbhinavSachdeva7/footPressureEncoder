@@ -13,9 +13,10 @@ from data_utils import load_and_split_data
 
 
 
-DATA_PATH = '/scratch/avs7793/footPressureEncoder/footPressureEncoder/data/all_subjects_pressure.pt'
+# DATA_PATH = '/scratch/avs7793/footPressureEncoder/footPressureEncoder/data/all_subjects_pressure.pt'
+DATA_PATH = '/scratch/avs7793/footPressureEncoder/all_subjects_pressure_96_files_zeroed.pt'
 TRAIN_RATIO = 0.8
-BATCH_SIZE = 64
+BATCH_SIZE = 2048
 SEED = 781
 
 
@@ -80,7 +81,7 @@ def compute_average_mse(model, data_loader, device):
             reconstructed = torch.expm1(reconstructed)
             # Compute MSE loss: average squared error per element in the batch
             loss = nn.MSELoss(reduction='mean')(reconstructed, inputs_original)
-            batch_size = inputs_original.size(0)  # Number of samples in the batch
+            batch_size = inputs_original.numel()  # Number of samples in the batch
             total_loss += loss.item() * batch_size  # Accumulate total loss
             total_samples += batch_size  # Accumulate total number of samples
 
@@ -97,12 +98,13 @@ def compute_average_mse(model, data_loader, device):
 # CHECKPOINT_PATH = '/scratch/avs7793/footPressureEncoder/footPressureEncoder/checkpoints/model_200.pt'
 # CHECKPOINT_PATH = '/scratch/avs7793/footPressureEncoder/checkpoints/dp_z64_ngc/model_epoch_100.pt'
 # CHECKPOINT_PATH = '/scratch/avs7793/footPressureEncoder/checkpoints/convVAE_ngc/model_epoch_100.pt'
-CHECKPOINT_PATH = '/scratch/avs7793/footPressureEncoder/checkpoints/lg_z64_ngc/model_epoch_200.pt'
-
+# CHECKPOINT_PATH = '/scratch/avs7793/footPressureEncoder/checkpoints/lg_z64_ngc/model_epoch_300.pt'
+# CHECKPOINT_PATH = '/scratch/avs7793/footPressureEncoder/checkpoints/lg_z64_ngc/model_epoch_500_vhigh_fixed_b3.pt'
+CHECKPOINT_PATH = '/scratch/avs7793/footPressureEncoder/checkpoints/large_z64_all_data_ngc/model_epoch_300.pt'
 
 if __name__ == "__main__":
 
-    device = torch.device('cpu')
+    device = torch.device('cuda')
     
     # model = vae.to(device)
     # model = vae1.to(device)

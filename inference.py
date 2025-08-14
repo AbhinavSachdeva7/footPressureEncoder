@@ -14,7 +14,7 @@ from data_utils import load_and_split_data # Import data loading utility
 
 # --- Configuration Constants ---
 DATA_PATH = '/scratch/avs7793/footPressureEncoder/footPressureEncoder/data/all_subjects_pressure.pt'
-CHECKPOINT_PATH = '/scratch/avs7793/footPressureEncoder/checkpoints/lg_z64_ngc/model_epoch_200.pt' # Specify the exact checkpoint
+CHECKPOINT_PATH = '/scratch/avs7793/footPressureEncoder/checkpoints/lg_z64_ngc/model_epoch_505_vhigh_fixed_b3.pt' # Specify the exact checkpoint
 
 # Data handling constants (should match train.py for consistency)
 TRAIN_RATIO = 0.8
@@ -76,10 +76,10 @@ def evaluate_and_visualize_test_samples(model, test_loader, device, output_dir, 
                 break
 
             # Move to device and reshape
-            # x_original_batch = x_original_batch.to(device).view(x_original_batch.shape[0], input_dim)
+            x_original_batch = x_original_batch.to(device).view(x_original_batch.shape[0], input_dim)
 
             # for convolutional vae
-            x_original_batch = x_original_batch.to(device).unsqueeze(1)
+            # x_original_batch = x_original_batch.to(device).unsqueeze(1)
 
             # Apply log1p preprocessing (as done in training)
             x_processed = torch.log1p(x_original_batch)
@@ -234,7 +234,7 @@ if __name__ == "__main__":
 # --- Optional: Generate samples from random Z --- (kept original commented code structure)
 try:
     with torch.no_grad():
-        num_generated_samples = 8
+        num_generated_samples = 2
         torch.manual_seed(781)
         random_z = torch.randn(num_generated_samples, 64).to(device)
         generated_x_flat = model.decode(random_z)
@@ -250,7 +250,7 @@ try:
         plt.axis('off')
     plt.suptitle("VAE Generated Samples from Random Latent Vectors (z)")
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    gen_save_path = os.path.join(OUTPUT_DIR, "generated_samples.png")
+    gen_save_path = os.path.join(OUTPUT_DIR, "generated_samples_only2.png")
     os.makedirs(os.path.dirname(gen_save_path), exist_ok=True)
     plt.savefig(gen_save_path)
     print(f"Generated samples plot saved to: {gen_save_path}")
