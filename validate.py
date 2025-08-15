@@ -72,6 +72,7 @@ def compute_average_mse(model, data_loader, device):
         for batch in data_loader:
             # print(batch.shape, batch[0].shape)
             # inputs_original = batch.to(device).unsqueeze(1)  # Move inputs to the same device as the model
+            print(batch.shape)
             inputs_original = batch.to(device).view(-1,2520)
             
             inputs = torch.log1p(inputs_original)
