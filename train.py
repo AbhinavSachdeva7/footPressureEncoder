@@ -27,8 +27,9 @@ BATCH_SIZE = 2048
 LEARNING_RATE = 1e-7
 FORCE_CPU = False # Set to True to force CPU usage
 # CHECKPOINT_LOAD_PATH = '/scratch/avs7793/footPressureEncoder/checkpoints/large_z64_all_data_ngc/model_epoch_300.pt'
-CHECKPOINT_LOAD_PATH = '/scratch/avs7793/footPressureEncoder/checkpoints/lg_z64_ngc/model_epoch_400.pt'
-CHECKPOINT_DIR = '/scratch/avs7793/footPressureEncoder/checkpoints/lg_start_z_64/model_epoch_200.pt'
+# CHECKPOINT_LOAD_PATH = '/scratch/avs7793/footPressureEncoder/checkpoints/lg_z64_ngc/model_epoch_400.pt'
+CHECKPOINT_LOAD_PATH = None
+CHECKPOINT_DIR = '/scratch/avs7793/footPressureEncoder/checkpoints/lg_start_z_64/'
 CHECKPOINT_SAVE_FREQ = 100 # Save every 100 epochs
 SEED = 781
 # --- End Configuration ---
